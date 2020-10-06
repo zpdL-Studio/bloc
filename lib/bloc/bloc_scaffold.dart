@@ -13,21 +13,21 @@ abstract class BLoCScaffoldProvider<T extends BLoCScaffold> extends BLoCProvider
 
   const BLoCScaffoldProvider({this.backgroundColor, this.bodyColor, this.resizeToAvoidBottomInset, Key key}) : super(key: key);
 
-  PreferredSizeWidget appBar();
+  PreferredSizeWidget appBar(BuildContext context, T bloc);
 
-  Widget body();
+  Widget body(BuildContext context, T bloc);
 
   @override
   Widget build(BuildContext context, T bloc) {
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: appBar(),
+      appBar: appBar(context, bloc),
       body: bodyColor != null
           ? Container(
               color: bodyColor,
-              child: body(),
+              child: body(context, bloc),
             )
-          : body(),
+          : body(context, bloc),
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
     );
   }
