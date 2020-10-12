@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:rxdart/subjects.dart';
 import 'package:zpdl_studio_bloc/widget/stream_builder_to_widget.dart';
 
@@ -73,6 +76,7 @@ class _BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widget
     if(_bloc is BLoCLoading) {
       _loading = _bloc as BLoCLoading;
     }
+
     super.initState();
   }
 
@@ -130,9 +134,9 @@ mixin BLoCLifeCycle on BLoC {
     if(_isCurrent != isCurrent) {
       _isCurrent = isCurrent;
       if(_isCurrent) {
-        _resume();
+        _resume(context);
       } else {
-        _pause();
+        _pause(context);
       }
     }
   }
@@ -143,9 +147,9 @@ mixin BLoCLifeCycle on BLoC {
       _isCurrent = _getIsCurrent(context);
       if(_isCurrent) {
         if (state == AppLifecycleState.resumed) {
-          _resume();
+          _resume(context);
         } else if (state == AppLifecycleState.paused) {
-          _pause();
+          _pause(context);
         }
       }
     }
@@ -155,23 +159,23 @@ mixin BLoCLifeCycle on BLoC {
     return ModalRoute.of(context)?.isCurrent ?? false;
   }
 
-  void _resume() async {
+  void _resume(BuildContext context) async {
     if(!_resumed) {
       _resumed = true;
-      onLifeCycleResume();
+      onLifeCycleResume(context);
     }
   }
 
-  void _pause() async {
+  void _pause(BuildContext context) async {
     if(_resumed) {
       _resumed = false;
-      onLifeCyclePause();
+      onLifeCyclePause(context);
     }
   }
 
-  void onLifeCycleResume();
+  void onLifeCycleResume(BuildContext context);
 
-  void onLifeCyclePause();
+  void onLifeCyclePause(BuildContext context);
 }
 
 mixin BLoCKeyboardState on BLoC {
@@ -278,5 +282,68 @@ mixin BLoCLoading on BLoC {
   }
   
   Widget buildBLoCLoading(BuildContext context, BLoCLoadingStatus status) => BLoCConfig().loadingBuilder(context, status);
+}
+
+mixin BLoCStreamSubscription on BLoC {
+  final _compositeSubscription = CompositeSubscription();
+
+  void onBLoCStreamSubscriptionError(Exception e) {
+    BuildContext context = buildContext;
+    if(context != null) {
+      BLoCConfig().streamSubscriptionError(context, e);
+    }
+  }
+
+  void onBLoCStreamSubscriptionShowLoading() {
+    if(this is BLoCLoading) {
+      (this as BLoCLoading).showBLoCLoading();
+    }
+  }
+
+  void onBLoCStreamSubscriptionHideLoading() {
+    if(this is BLoCLoading) {
+      (this as BLoCLoading).hideBLoCLoading();
+    }
+  }
+
+  StreamSubscription<T> streamSubscription<T>({
+    @required Stream<T> stream,
+    @required void Function(T data) onData,
+    void Function(bool success) onDone,
+    bool Function(Exception exception) onError,
+    void Function() onShowLoading,
+    void Function() onHideLoading,
+  }) {
+    return _compositeSubscription.add(
+      DeferStream(() => stream,
+      ).doOnListen(() {
+        if(onShowLoading != null) onShowLoading();
+      }).listen(
+          onData,
+          onError: ([error, stackTrace]) {
+            if(onHideLoading != null) onHideLoading();
+
+            if(!(error is Exception)) {
+              return;
+            }
+            var errorResult = onError != null ? onError(error) : false;
+            if(!errorResult) {
+              onBLoCStreamSubscriptionError(error);
+            }
+            if(onDone != null) {
+              onDone(false);
+            }
+          },
+          onDone: () {
+            if(onHideLoading != null) onHideLoading();
+
+            if(onDone != null) {
+              onDone(true);
+            }
+          },
+          cancelOnError: true
+      ),
+    );
+  }
 }
 
