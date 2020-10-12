@@ -10,6 +10,7 @@ import 'bloc_config.dart';
 abstract class BLoC {
 
   BuildContext Function() _onBuildContext;
+  bool Function() _onMounted;
 
   BuildContext get buildContext {
     if(_onBuildContext != null) {
@@ -22,13 +23,17 @@ abstract class BLoC {
     _onBuildContext = onBuildContext;
   }
 
+  void _setOnMounted(bool Function() onMounted) {
+    _onMounted = onMounted;
+  }
+
   void Function(VoidCallback) _onSetState;
   void _setOnSetState(void Function(VoidCallback) onSetState) {
     _onSetState = onSetState;
   }
 
   void setState(VoidCallback fn) {
-    if(_onSetState != null) {
+    if(_onMounted != null && _onMounted() && _onSetState != null) {
       _onSetState(fn);
     }
   }
@@ -63,6 +68,7 @@ class _BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widget
   @override
   void initState() {
     _bloc = widget.createBLoC();
+    _bloc?._setOnMounted(() => this.mounted);
     _bloc?._setOnBuildContext(() => this.context);
     _bloc?._setOnSetState((fn) => setState(fn));
 
@@ -287,20 +293,20 @@ mixin BLoCLoading on BLoC {
 mixin BLoCStreamSubscription on BLoC {
   final _compositeSubscription = CompositeSubscription();
 
-  void onBLoCStreamSubscriptionError(Exception e) {
+  void onStreamSubscriptionError(Exception e) {
     BuildContext context = buildContext;
     if(context != null) {
       BLoCConfig().streamSubscriptionError(context, e);
     }
   }
 
-  void onBLoCStreamSubscriptionShowLoading() {
+  void onStreamSubscriptionShowLoading() {
     if(this is BLoCLoading) {
       (this as BLoCLoading).showBLoCLoading();
     }
   }
 
-  void onBLoCStreamSubscriptionHideLoading() {
+  void onStreamSubscriptionHideLoading() {
     if(this is BLoCLoading) {
       (this as BLoCLoading).hideBLoCLoading();
     }
@@ -317,25 +323,25 @@ mixin BLoCStreamSubscription on BLoC {
     return _compositeSubscription.add(
       DeferStream(() => stream,
       ).doOnListen(() {
-        if(onShowLoading != null) onShowLoading();
+        onShowLoading != null ? onShowLoading() : onStreamSubscriptionShowLoading();
       }).listen(
           onData,
           onError: ([error, stackTrace]) {
-            if(onHideLoading != null) onHideLoading();
+            onHideLoading != null ? onHideLoading() : onStreamSubscriptionHideLoading();
 
             if(!(error is Exception)) {
               return;
             }
             var errorResult = onError != null ? onError(error) : false;
             if(!errorResult) {
-              onBLoCStreamSubscriptionError(error);
+              onStreamSubscriptionError(error);
             }
             if(onDone != null) {
               onDone(false);
             }
           },
           onDone: () {
-            if(onHideLoading != null) onHideLoading();
+            onHideLoading != null ? onHideLoading() : onStreamSubscriptionHideLoading();
 
             if(onDone != null) {
               onDone(true);
