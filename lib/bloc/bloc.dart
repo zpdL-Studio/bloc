@@ -41,6 +41,22 @@ abstract class BLoC {
   void dispose();
 }
 
+abstract class BLoCChild extends BLoC {
+
+  bool _parentDispose = false;
+  bool _disposed = false;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    if(!_parentDispose) {
+      disposeChild();
+    }
+  }
+
+  void disposeChild();
+}
+
 abstract class BLoCProvider<T extends BLoC> extends StatefulWidget {
 
   const BLoCProvider({Key key}) : super(key: key);
@@ -201,7 +217,6 @@ mixin BLoCKeyboardState on BLoC {
   void onKeyboardState(bool show);
 }
 
-
 enum BLoCLoadingStatus {
   INIT,
   LOCK,
@@ -300,18 +315,6 @@ mixin BLoCStreamSubscription on BLoC {
     }
   }
 
-  void onStreamSubscriptionShowLoading() {
-    if(this is BLoCLoading) {
-      (this as BLoCLoading).showBLoCLoading();
-    }
-  }
-
-  void onStreamSubscriptionHideLoading() {
-    if(this is BLoCLoading) {
-      (this as BLoCLoading).hideBLoCLoading();
-    }
-  }
-
   StreamSubscription<T> streamSubscription<T>({
     @required Stream<T> stream,
     @required void Function(T data) onData,
@@ -323,11 +326,11 @@ mixin BLoCStreamSubscription on BLoC {
     return _compositeSubscription.add(
       DeferStream(() => stream,
       ).doOnListen(() {
-        onShowLoading != null ? onShowLoading() : onStreamSubscriptionShowLoading();
+        if(onShowLoading != null) onShowLoading();
       }).listen(
           onData,
           onError: ([error, stackTrace]) {
-            onHideLoading != null ? onHideLoading() : onStreamSubscriptionHideLoading();
+            if(onHideLoading != null) onHideLoading();
 
             if(!(error is Exception)) {
               return;
@@ -341,7 +344,7 @@ mixin BLoCStreamSubscription on BLoC {
             }
           },
           onDone: () {
-            onHideLoading != null ? onHideLoading() : onStreamSubscriptionHideLoading();
+            if(onHideLoading != null) onHideLoading();
 
             if(onDone != null) {
               onDone(true);
@@ -350,6 +353,36 @@ mixin BLoCStreamSubscription on BLoC {
           cancelOnError: true
       ),
     );
+  }
+}
+
+mixin BLoCParent on BLoC {
+
+  List<BLoCChild> _blocChildren = List();
+
+  void addChild(BLoCChild child) {
+    _blocChildren.add(child);
+    child._parentDispose = true;
+  }
+
+  void removeChild(BLoCChild child) {
+    if(_blocChildren.remove(child)) {
+      _disposeChild(child);
+    }
+  }
+
+  void dispose() {
+    _blocChildren.removeWhere((element) {
+      _disposeChild(element);
+      return true;
+    });
+  }
+
+  void _disposeChild(BLoCChild child) {
+    child._parentDispose = false;
+    if(child._disposed) {
+      child.disposeChild();
+    }
   }
 }
 
