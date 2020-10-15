@@ -62,41 +62,45 @@ abstract class BLoCProvider<T extends BLoC> extends StatefulWidget {
   const BLoCProvider({Key key}) : super(key: key);
 
   static T of<T extends BLoC>(BuildContext context) {
-    final _BLoCProviderState<T> state = context.findAncestorStateOfType<_BLoCProviderState<T>>();
-    return state?._bloc;
+    final BLoCProviderState<T> state = context.findAncestorStateOfType<BLoCProviderState<T>>();
+    return state?.bloc;
   }
 
   @override
-  State<StatefulWidget> createState() => _BLoCProviderState<T>();
+  State<StatefulWidget> createState() => BLoCProviderState<T>();
 
   T createBLoC();
 
   Widget build(BuildContext context, T bloc);
 }
 
-class _BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with WidgetsBindingObserver {
+class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with WidgetsBindingObserver {
 
-  T _bloc;
-  BLoCLifeCycle _lifeCycle;
-  BLoCKeyboardState _keyboardState;
-  BLoCLoading _loading;
+  @protected T bloc;
+  @protected BLoCLifeCycle lifeCycle;
+  @protected BLoCKeyboardState keyboardState;
+  @protected BLoCLoading loading;
+  @protected BLoCParent parent;
 
   @override
   void initState() {
-    _bloc = widget.createBLoC();
-    _bloc?._setOnMounted(() => this.mounted);
-    _bloc?._setOnBuildContext(() => this.context);
-    _bloc?._setOnSetState((fn) => setState(fn));
+    bloc = widget.createBLoC();
+    bloc?._setOnMounted(() => this.mounted);
+    bloc?._setOnBuildContext(() => this.context);
+    bloc?._setOnSetState((fn) => setState(fn));
 
-    if(_bloc is BLoCLifeCycle) {
-      _lifeCycle = _bloc as BLoCLifeCycle;
+    if(bloc is BLoCLifeCycle) {
+      lifeCycle = bloc as BLoCLifeCycle;
       WidgetsBinding.instance.addObserver(this);
     }
-    if(_bloc is BLoCKeyboardState) {
-      _keyboardState = _bloc as BLoCKeyboardState;
+    if(bloc is BLoCKeyboardState) {
+      keyboardState = bloc as BLoCKeyboardState;
     }
-    if(_bloc is BLoCLoading) {
-      _loading = _bloc as BLoCLoading;
+    if(bloc is BLoCLoading) {
+      loading = bloc as BLoCLoading;
+    }
+    if(bloc is BLoCParent) {
+      parent = bloc as BLoCParent;
     }
 
     super.initState();
@@ -104,37 +108,48 @@ class _BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widget
 
   @override
   void dispose() {
-    if(_lifeCycle != null) {
+    if(lifeCycle != null) {
       WidgetsBinding.instance.removeObserver(this);
-      _lifeCycle = null;
+      lifeCycle._pause();
+      lifeCycle = null;
      }
-    _keyboardState = null;
-    _loading?.disposeBLoCLoading();
-    _loading = null;
+    keyboardState = null;
+    loading?.disposeBLoCLoading();
+    loading = null;
+    parent?.disposeParent();
+    parent = null;
 
-    _bloc?._setOnSetState(null);
-    _bloc?._setOnBuildContext(null);
-    _bloc?.dispose();
-    _bloc = null;
+    bloc?._setOnSetState(null);
+    bloc?._setOnBuildContext(null);
+    bloc?.dispose();
+    bloc = null;
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if(_bloc != null) {
-      _lifeCycle?._updateLifeCycle(context);
-      _keyboardState?._updateKeyboardState(context);
-      if(_loading != null) {
+    if(bloc != null) {
+      lifeCycle?._updateLifeCycle(context);
+      keyboardState?._updateKeyboardState(context);
+      if(loading != null) {
         return Stack(
           children: [
-            widget.build(context, _bloc),
+            Builder(
+              builder: (context) {
+                return widget.build(context, bloc);
+              },
+            ),
             StreamBuilderToWidget(
-                stream: _loading.getBLoCLoadingStatusStream, 
-                builder: _loading.buildBLoCLoading)
+                stream: loading.getBLoCLoadingStatusStream, 
+                builder: loading.buildBLoCLoading)
           ],
         );
       } else {
-        return widget.build(context, _bloc);
+        return Builder(
+          builder: (context) {
+            return widget.build(context, bloc);
+          },
+        );
       }
     }
     return Container();
@@ -143,35 +158,30 @@ class _BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widget
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    _lifeCycle?._didChangeAppLifecycleState(state);
+    lifeCycle?._didChangeAppLifecycleState(state);
   }
 }
 
 mixin BLoCLifeCycle on BLoC {
-  bool _isCurrent;
   bool _resumed = false;
 
   void _updateLifeCycle(BuildContext context) {
     bool isCurrent = _getIsCurrent(context);
-    if(_isCurrent != isCurrent) {
-      _isCurrent = isCurrent;
-      if(_isCurrent) {
-        _resume(context);
-      } else {
-        _pause(context);
-      }
+    if(isCurrent) {
+      _resume();
+    } else {
+      _pause();
     }
   }
 
   void _didChangeAppLifecycleState(AppLifecycleState state) {
     BuildContext context = buildContext;
     if(context != null) {
-      _isCurrent = _getIsCurrent(context);
-      if(_isCurrent) {
+      if(_getIsCurrent(context)) {
         if (state == AppLifecycleState.resumed) {
-          _resume(context);
+          _resume();
         } else if (state == AppLifecycleState.paused) {
-          _pause(context);
+          _pause();
         }
       }
     }
@@ -181,23 +191,23 @@ mixin BLoCLifeCycle on BLoC {
     return ModalRoute.of(context)?.isCurrent ?? false;
   }
 
-  void _resume(BuildContext context) async {
+  void _resume() async {
     if(!_resumed) {
       _resumed = true;
-      onLifeCycleResume(context);
+      onLifeCycleResume();
     }
   }
 
-  void _pause(BuildContext context) async {
+  void _pause() async {
     if(_resumed) {
       _resumed = false;
-      onLifeCyclePause(context);
+      onLifeCyclePause();
     }
   }
 
-  void onLifeCycleResume(BuildContext context);
+  void onLifeCycleResume();
 
-  void onLifeCyclePause(BuildContext context);
+  void onLifeCyclePause();
 }
 
 mixin BLoCKeyboardState on BLoC {
@@ -371,7 +381,7 @@ mixin BLoCParent on BLoC {
     }
   }
 
-  void dispose() {
+  void disposeParent() {
     _blocChildren.removeWhere((element) {
       _disposeChild(element);
       return true;
