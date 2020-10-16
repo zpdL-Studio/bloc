@@ -37,17 +37,20 @@ class BLoCConfig {
 
   void Function(BuildContext context, Exception e) streamSubscriptionError =
       (BuildContext context, Exception e) {
-        AlertDialog(
-          contentPadding: EdgeInsets.all(16),
-          content: Text(e.toString()),
-          actions: <Widget>[
-            FlatButton(
-              child: Text('OK'),
-              onPressed: () {
-                Navigator.pop(context, "OK");
-              },
-            ),
-          ],
+        showDialog(
+          context: context,
+          child: AlertDialog(
+            contentPadding: EdgeInsets.all(16),
+            content: Text(e.toString()),
+            actions: <Widget>[
+              FlatButton(
+                child: Text('OK'),
+                onPressed: () {
+                  Navigator.pop(context, "OK");
+                },
+              ),
+            ],
+          )
         );
       };
 }
