@@ -2,9 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:rxdart/subjects.dart';
-import 'package:zpdl_studio_bloc/widget/stream_builder_to_widget.dart';
 
+import 'bloc_child.dart';
 import 'bloc_config.dart';
 
 abstract class BLoC {
@@ -41,22 +40,6 @@ abstract class BLoC {
   void dispose();
 }
 
-abstract class BLoCChild extends BLoC {
-
-  bool _parentDispose = false;
-  bool _disposed = false;
-
-  @override
-  void dispose() {
-    _disposed = true;
-    if(!_parentDispose) {
-      disposeChild();
-    }
-  }
-
-  void disposeChild();
-}
-
 abstract class BLoCProvider<T extends BLoC> extends StatefulWidget {
 
   const BLoCProvider({Key key}) : super(key: key);
@@ -78,7 +61,6 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widgets
 
   @protected T bloc;
   @protected BLoCLifeCycle lifeCycle;
-  @protected BLoCKeyboardState keyboardState;
   @protected BLoCLoading loading;
   @protected BLoCParent parent;
 
@@ -93,16 +75,15 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widgets
       lifeCycle = bloc as BLoCLifeCycle;
       WidgetsBinding.instance.addObserver(this);
     }
-    if(bloc is BLoCKeyboardState) {
-      keyboardState = bloc as BLoCKeyboardState;
-    }
     if(bloc is BLoCLoading) {
       loading = bloc as BLoCLoading;
     }
     if(bloc is BLoCParent) {
       parent = bloc as BLoCParent;
     }
-
+    if(bloc != null) {
+      initBLoC(bloc);
+    }
     super.initState();
   }
 
@@ -113,16 +94,18 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widgets
       lifeCycle._pause();
       lifeCycle = null;
      }
-    keyboardState = null;
-    loading?.disposeBLoCLoading();
     loading = null;
     parent?.disposeParent();
     parent = null;
 
-    bloc?._setOnSetState(null);
-    bloc?._setOnBuildContext(null);
-    bloc?.dispose();
-    bloc = null;
+    if(bloc != null) {
+      disposeBLoC(bloc);
+      bloc._setOnSetState(null);
+      bloc._setOnBuildContext(null);
+      bloc.dispose();
+      bloc = null;
+    }
+
     super.dispose();
   }
 
@@ -130,24 +113,27 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widgets
   Widget build(BuildContext context) {
     if(bloc != null) {
       lifeCycle?._updateLifeCycle(context);
-      keyboardState?._updateKeyboardState(context);
       if(loading != null) {
         return Stack(
           children: [
             Builder(
               builder: (context) {
-                return widget.build(context, bloc);
+                return buildBLoC(context, bloc, widget.build(context, bloc));
               },
             ),
-            StreamBuilderToWidget(
-                stream: loading.getBLoCLoadingStatusStream, 
-                builder: loading.buildBLoCLoading)
+            BLoCLoadingWidget(
+                notify: (notify) {
+                  loading._notify = notify;
+                  return loading._status;
+                },
+                builder: loading.buildBLoCLoading
+            )
           ],
         );
       } else {
         return Builder(
           builder: (context) {
-            return widget.build(context, bloc);
+            return buildBLoC(context, bloc, widget.build(context, bloc));
           },
         );
       }
@@ -160,6 +146,12 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widgets
     super.didChangeAppLifecycleState(state);
     lifeCycle?._didChangeAppLifecycleState(state);
   }
+
+  void initBLoC(T bloc) {}
+
+  void disposeBLoC(T bloc) {}
+
+  Widget buildBLoC(BuildContext context, T bloc, Widget widget) => widget;
 }
 
 mixin BLoCLifeCycle on BLoC {
@@ -210,23 +202,6 @@ mixin BLoCLifeCycle on BLoC {
   void onLifeCyclePause();
 }
 
-mixin BLoCKeyboardState on BLoC {
-
-  bool _isShowingKeyboard = false;
-
-  bool get isShowingKeyboard => _isShowingKeyboard;
-
-  void _updateKeyboardState(BuildContext context) {
-    bool showingKeyboard = (MediaQuery.of(context)?.viewInsets?.bottom ?? 0) > 0;
-    if(_isShowingKeyboard != showingKeyboard) {
-      _isShowingKeyboard = showingKeyboard;
-      onKeyboardState(_isShowingKeyboard);
-    }
-  }
-
-  void onKeyboardState(bool show);
-}
-
 enum BLoCLoadingStatus {
   INIT,
   LOCK,
@@ -234,29 +209,34 @@ enum BLoCLoadingStatus {
   HIDING
 }
 
+typedef BLoCLoadingWidgetNotify = void Function(BLoCLoadingStatus status);
+
 mixin BLoCLoading on BLoC {
   int _count = 0;
+  BLoCLoadingStatus _status = BLoCLoadingStatus.INIT;
 
-  final _blocLoadingStatus = BehaviorSubject<BLoCLoadingStatus>()..add(BLoCLoadingStatus.INIT);
-  Stream<BLoCLoadingStatus> get getBLoCLoadingStatusStream => _blocLoadingStatus.stream;
+  BLoCLoadingWidgetNotify _notify;
 
-  void disposeBLoCLoading() {
-    _blocLoadingStatus.close();
+  void _setStatus(BLoCLoadingStatus status) {
+    _status = status;
+    if(_notify != null) {
+      _notify(_status);
+    }
   }
 
-  void showBLoCLoading() async {
-    switch(await _blocLoadingStatus.first) {
+  void showBLoCLoading() {
+    switch(_status) {
       case BLoCLoadingStatus.INIT:
         _count = 1;
         if(BLoCConfig().loadingDelayMs > 0) {
-          _blocLoadingStatus.sink.add(BLoCLoadingStatus.LOCK);
+          _setStatus(BLoCLoadingStatus.LOCK);
           Future.delayed(Duration(milliseconds: BLoCConfig().loadingDelayMs)).then((data) async {
-            if (await _blocLoadingStatus.first == BLoCLoadingStatus.LOCK) {
-              _blocLoadingStatus.sink.add(BLoCLoadingStatus.LOADING);
+            if (_status == BLoCLoadingStatus.LOCK) {
+              _setStatus(BLoCLoadingStatus.LOADING);
             }
           });
         } else {
-          _blocLoadingStatus.sink.add(BLoCLoadingStatus.LOADING);
+          _setStatus(BLoCLoadingStatus.LOADING);
         }
         break;
       case BLoCLoadingStatus.LOCK:
@@ -268,14 +248,14 @@ mixin BLoCLoading on BLoC {
       case BLoCLoadingStatus.HIDING:
         _count++;
         if(_count > 0) {
-          _blocLoadingStatus.sink.add(BLoCLoadingStatus.LOADING);
+          _setStatus(BLoCLoadingStatus.LOADING);
         }
         break;
     }
   }
 
-  void hideBLoCLoading() async {
-    switch(await _blocLoadingStatus.first) {
+  void hideBLoCLoading() {
+    switch(_status) {
       case BLoCLoadingStatus.INIT:
         _count = 0;
         break;
@@ -283,7 +263,7 @@ mixin BLoCLoading on BLoC {
         _count--;
         if(_count <= 0) {
           _count = 0;
-          _blocLoadingStatus.sink.add(BLoCLoadingStatus.INIT);
+          _setStatus(BLoCLoadingStatus.INIT);
         }
         break;
       case BLoCLoadingStatus.LOADING:
@@ -291,10 +271,10 @@ mixin BLoCLoading on BLoC {
         if(_count <= 0) {
           _count = 0;
           if(BLoCConfig().loadingHideDelayMs > 0) {
-            _blocLoadingStatus.sink.add(BLoCLoadingStatus.HIDING);
+            _setStatus(BLoCLoadingStatus.HIDING);
             _hide(BLoCConfig().loadingHideDelayMs);
           } else {
-            _blocLoadingStatus.sink.add(BLoCLoadingStatus.INIT);
+            _setStatus(BLoCLoadingStatus.INIT);
           }
         }
         break;
@@ -307,12 +287,50 @@ mixin BLoCLoading on BLoC {
   void _hide(int delayMs) {
     Future.delayed(Duration(milliseconds: delayMs)).then((data) {
       if (_count <= 0) {
-        _blocLoadingStatus.sink.add(BLoCLoadingStatus.INIT);
+        _setStatus(BLoCLoadingStatus.INIT);
       }
     });
   }
   
   Widget buildBLoCLoading(BuildContext context, BLoCLoadingStatus status) => BLoCConfig().loadingBuilder(context, status);
+}
+
+class BLoCLoadingWidget extends StatefulWidget {
+
+  final Widget Function(BuildContext context, BLoCLoadingStatus status) builder;
+  final BLoCLoadingStatus Function(BLoCLoadingWidgetNotify notify) notify;
+
+  const BLoCLoadingWidget({Key key, @required this.builder, @required this.notify}) : super(key: key);
+
+  @override
+  State<StatefulWidget> createState() => _BLoCLoadingState();
+}
+
+class _BLoCLoadingState extends State<BLoCLoadingWidget> {
+  BLoCLoadingStatus _status;
+
+  @override
+  void initState() {
+    _status = widget.notify((BLoCLoadingStatus status) {
+      if (mounted) {
+        setState(() {
+          _status = status;
+        });
+      }
+    });
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    widget.notify(null);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.builder(context, _status);
+  }
 }
 
 mixin BLoCStreamSubscription on BLoC {
@@ -365,34 +383,3 @@ mixin BLoCStreamSubscription on BLoC {
     );
   }
 }
-
-mixin BLoCParent on BLoC {
-
-  List<BLoCChild> _blocChildren = List();
-
-  void addChild(BLoCChild child) {
-    _blocChildren.add(child);
-    child._parentDispose = true;
-  }
-
-  void removeChild(BLoCChild child) {
-    if(_blocChildren.remove(child)) {
-      _disposeChild(child);
-    }
-  }
-
-  void disposeParent() {
-    _blocChildren.removeWhere((element) {
-      _disposeChild(element);
-      return true;
-    });
-  }
-
-  void _disposeChild(BLoCChild child) {
-    child._parentDispose = false;
-    if(child._disposed) {
-      child.disposeChild();
-    }
-  }
-}
-

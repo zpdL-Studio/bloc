@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class TextFieldFocusWidget extends StatefulWidget {
 
-  final Widget Function(FocusNode focusNode) onBuildTextField;
+  final Widget Function(BuildContext context, FocusNode focusNode) onBuildTextField;
   final void Function(FocusNode focusNode) onHasFocusNode;
 
   const TextFieldFocusWidget({Key key, @required this.onBuildTextField, this.onHasFocusNode}) : super(key: key);
@@ -43,7 +43,7 @@ class _TextFieldFocusState extends State<TextFieldFocusWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return widget.onBuildTextField(_focusNode);
+    return widget.onBuildTextField(context, _focusNode);
   }
 }
 
