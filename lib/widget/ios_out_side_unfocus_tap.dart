@@ -5,7 +5,7 @@ class IosOutSideUnFocusTab extends StatelessWidget {
 
   final Widget child;
 
-  const IosOutSideUnFocusTab({Key key, this.child}) : super(key: key);
+  const IosOutSideUnFocusTab({Key? key, required this.child}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {

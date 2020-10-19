@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 
 class StreamBuilderToWidget<T> extends StatelessWidget {
 
-  const StreamBuilderToWidget({Key key, this.initialData, this.stream, @required this.builder, this.noHasDataWidget}) : super(key: key);
+  const StreamBuilderToWidget({Key? key, this.initialData, this.stream, required this.builder, this.noHasDataWidget}) : super(key: key);
 
-  final T initialData;
-  final Stream<T> stream;
+  final T? initialData;
+  final Stream<T>? stream;
   final Widget Function(BuildContext context, T data) builder;
-  final Widget noHasDataWidget;
+  final Widget? noHasDataWidget;
 
   @override
   Widget build(BuildContext context) {
@@ -16,10 +16,11 @@ class StreamBuilderToWidget<T> extends StatelessWidget {
       initialData: initialData,
       stream: stream,
       builder: (BuildContext context, AsyncSnapshot<T> snapshot) {
-        if(snapshot.hasData) {
-          return builder(context, snapshot.data);
+        var data = snapshot.hasData ? snapshot.data : null;
+        if(data != null) {
+          return builder(context, data);
         } else {
-          return noHasDataWidget != null ? noHasDataWidget : Container();
+          return noHasDataWidget ?? Container();
         }
       },
     );
@@ -28,11 +29,11 @@ class StreamBuilderToWidget<T> extends StatelessWidget {
 
 class StreamBuilderToSliver<T> extends SliverToBoxAdapter {
   StreamBuilderToSliver(
-      {Key key,
-      T initialData,
-      Stream<T> stream,
-      @required Widget Function(BuildContext context, T data) builder,
-      Widget noHasDataWidget})
+      {Key? key,
+      T? initialData,
+      Stream<T>? stream,
+      required Widget Function(BuildContext context, T data) builder,
+      Widget? noHasDataWidget})
       : super(
             key: key,
             child: StreamBuilderToWidget(
@@ -45,23 +46,24 @@ class StreamBuilderToSliver<T> extends SliverToBoxAdapter {
 
 class StreamBuilderToSliverList<T> extends StatelessWidget {
 
-  const StreamBuilderToSliverList({Key key, this.stream, @required this.builder, this.emptyWidget}) : super(key: key);
+  const StreamBuilderToSliverList({Key? key, this.stream, required this.builder, this.emptyWidget}) : super(key: key);
 
-  final Stream<List<T>> stream;
+  final Stream<List<T>>? stream;
   final Widget Function(BuildContext context, T data, int index, int size) builder;
-  final Widget emptyWidget;
+  final Widget? emptyWidget;
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<T>>(
       stream: stream,
       builder: (BuildContext context, AsyncSnapshot<List<T>> snapshot) {
-        if(snapshot.hasData) {
-          if (snapshot.data.isNotEmpty) {
+        var list =  snapshot.hasData ? snapshot.data : null;
+        if(list != null) {
+          if (list.isNotEmpty) {
             return SliverList(
               delegate: SliverChildBuilderDelegate((context, index) {
-                return builder(context, snapshot.data[index], index, snapshot.data.length);
-            }, childCount: snapshot.data.length
+                return builder(context, list[index], index, list.length);
+            }, childCount: list.length
             ));
           } else {
             return emptyWidget != null

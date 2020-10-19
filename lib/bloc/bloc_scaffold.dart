@@ -17,10 +17,10 @@ abstract class BLoCScaffold extends BLoC with BLoCLoading, BLoCStreamSubscriptio
   }
 
   StreamSubscription<T> scaffoldSubscription<T>({
-    @required Stream<T> stream,
-    @required void Function(T data) onData,
-    void Function(bool success) onDone,
-    bool Function(Exception exception) onError
+    required Stream<T> stream,
+    required void Function(T data) onData,
+    void Function(bool success)? onDone,
+    bool Function(Exception exception)? onError
   }) {
     return streamSubscription<T>(
       stream: stream,
@@ -34,11 +34,11 @@ abstract class BLoCScaffold extends BLoC with BLoCLoading, BLoCStreamSubscriptio
 }
 
 abstract class BLoCScaffoldProvider<T extends BLoCScaffold> extends BLoCProvider<T> {
-  final Color backgroundColor;
-  final Color bodyColor;
+  final Color? backgroundColor;
+  final Color? bodyColor;
   final bool resizeToAvoidBottomInset;
 
-  const BLoCScaffoldProvider({this.backgroundColor, this.bodyColor, this.resizeToAvoidBottomInset, Key key}) : super(key: key);
+  const BLoCScaffoldProvider({this.backgroundColor, this.bodyColor, this.resizeToAvoidBottomInset = false, Key? key}) : super(key: key);
 
   PreferredSizeWidget appBar(BuildContext context, T bloc);
 
@@ -66,15 +66,15 @@ abstract class BLoCScaffoldProvider<T extends BLoCScaffold> extends BLoCProvider
 }
 
 class BLoCScaffoldProviderState<T extends BLoCScaffold> extends BLoCProviderState<T> {
-  @protected BLoCKeyboardState keyboardState;
+  @protected BLoCKeyboardState? keyboardState;
 
   @override
   void initBLoC(T bloc) {
     if(bloc is BLoCKeyboardState) {
       keyboardState = bloc;
       if(keyboardState is BLoCParent) {
-        keyboardState.addBLoCKeyboardStateListener((bloc as BLoCParent).updateChildKeyboardState);
-        (keyboardState as BLoCParent).childKeyboardStateHasFocusNode = keyboardState.hasFocusNodeBLoCKeyboardState;
+        keyboardState?.addBLoCKeyboardStateListener((bloc as BLoCParent).updateChildKeyboardState);
+        (keyboardState as BLoCParent).childKeyboardStateHasFocusNode = keyboardState?.hasFocusNodeBLoCKeyboardState;
       }
     }
     super.initBLoC(bloc);
@@ -84,7 +84,7 @@ class BLoCScaffoldProviderState<T extends BLoCScaffold> extends BLoCProviderStat
   void disposeBLoC(T bloc) {
     if(keyboardState != null) {
       if(keyboardState is BLoCParent) {
-        keyboardState.removeBLoCKeyboardStateListener((bloc as BLoCParent).updateChildKeyboardState);
+        keyboardState?.removeBLoCKeyboardStateListener((bloc as BLoCParent).updateChildKeyboardState);
         (keyboardState as BLoCParent).childKeyboardStateHasFocusNode = null;
       }
     }
@@ -110,7 +110,7 @@ mixin BLoCKeyboardState on BLoCScaffold {
   bool get isShowingKeyboard => _isShowingKeyboard;
 
   void _updateKeyboardState(BuildContext context) {
-    bool showingKeyboard = (MediaQuery.of(context)?.viewInsets?.bottom ?? 0) > 0;
+    var showingKeyboard = (MediaQuery.of(context)?.viewInsets.bottom ?? 0) > 0;
     if(_isShowingKeyboard != showingKeyboard) {
       _isShowingKeyboard = showingKeyboard;
       onKeyboardState(_isShowingKeyboard);
@@ -128,22 +128,18 @@ mixin BLoCKeyboardState on BLoCScaffold {
     }
   }
 
-  List<void Function(bool)> _listener = List();
+  final List<void Function(bool)> _listener = [];
 
   void addBLoCKeyboardStateListener(BLoCKeyboardStateListener listener) {
-    if(listener != null) {
-      _listener.add(listener);
-    }
+    _listener.add(listener);
   }
 
   void removeBLoCKeyboardStateListener(BLoCKeyboardStateListener listener) {
-    if(listener != null) {
-      _listener.remove(listener);
-    }
+    _listener.remove(listener);
   }
 
-  FocusNode _focusNode;
-  void hasFocusNodeBLoCKeyboardState(FocusNode focusNode) {
+  FocusNode? _focusNode;
+  void hasFocusNodeBLoCKeyboardState(FocusNode? focusNode) {
     _focusNode = focusNode;
   }
 }

@@ -1,36 +1,10 @@
 import 'package:flutter/material.dart';
 
 class TouchWell extends StatefulWidget {
-  final Widget child;
-  final GestureTapCallback onTap;
-  final GestureTapCallback onDoubleTap;
-  final GestureLongPressCallback onLongPress;
-  final GestureTapDownCallback onTapDown;
-  final GestureTapCancelCallback onTapCancel;
-  final ValueChanged<bool> onHighlightChanged;
-  final ValueChanged<bool> onHover;
-  final Color bgColor;
-  final Color focusColor;
-  final Color hoverColor;
-  final Color highlightColor;
-  final Color splashColor;
-  final InteractiveInkFeatureFactory splashFactory;
-  final double radius;
-  final BorderRadius borderRadius;
-  final ShapeBorder customBorder;
-  final bool enableFeedback;
-  final bool excludeFromSemantics;
-  final FocusNode focusNode;
-  final bool canRequestFocus;
-  final ValueChanged<bool> onFocusChange;
-  final bool autofocus;
-  final bool circleBoard;
-  final bool protectMultiTap;
-  final bool touchWellIsTop;
 
   TouchWell({
-    Key key,
-    this.child,
+    Key? key,
+    required this.child,
     this.onTap,
     this.onDoubleTap,
     this.onLongPress,
@@ -58,17 +32,43 @@ class TouchWell extends StatefulWidget {
     this.touchWellIsTop = false})
       : super(key: key);
 
+  final Widget child;
+  final GestureTapCallback? onTap;
+  final GestureTapCallback? onDoubleTap;
+  final GestureLongPressCallback? onLongPress;
+  final GestureTapDownCallback? onTapDown;
+  final GestureTapCancelCallback? onTapCancel;
+  final ValueChanged<bool>? onHighlightChanged;
+  final ValueChanged<bool>? onHover;
+  final Color bgColor;
+  final Color? focusColor;
+  final Color? hoverColor;
+  final Color? highlightColor;
+  final Color? splashColor;
+  final InteractiveInkFeatureFactory? splashFactory;
+  final double? radius;
+  final BorderRadius? borderRadius;
+  final ShapeBorder? customBorder;
+  final bool enableFeedback;
+  final bool excludeFromSemantics;
+  final FocusNode? focusNode;
+  final bool canRequestFocus;
+  final ValueChanged<bool>? onFocusChange;
+  final bool autofocus;
+  final bool circleBoard;
+  final bool protectMultiTap;
+  final bool touchWellIsTop;
+
   @override
   _TouchWellState createState() => _TouchWellState();
 }
 
 class _TouchWellState extends State<TouchWell> {
-  int tapTimeMs;
+  int tapTimeMs = DateTime.now().millisecondsSinceEpoch;
 
   @override
   void initState() {
     super.initState();
-    tapTimeMs = DateTime.now().millisecondsSinceEpoch;
   }
 
   @override
@@ -76,7 +76,7 @@ class _TouchWellState extends State<TouchWell> {
     if(widget.touchWellIsTop) {
       return Stack(
         children: <Widget>[
-          this.widget.child,
+          widget.child,
           Positioned.fill(child: _buildMaterial(null)),
         ],
       );
@@ -85,7 +85,7 @@ class _TouchWellState extends State<TouchWell> {
     }
   }
 
-  Material _buildMaterial(Widget child) {
+  Material _buildMaterial(Widget? child) {
     return Material(
       color: widget.bgColor,
       shape: widget.circleBoard ? CircleBorder() : null,
@@ -95,7 +95,10 @@ class _TouchWellState extends State<TouchWell> {
           final now = DateTime.now().millisecondsSinceEpoch;
           if(now - tapTimeMs > 500) {
             tapTimeMs = now;
-            widget.onTap();
+            var onTap = widget.onTap;
+            if(onTap != null) {
+              onTap();
+            }
           }
         } : null : widget.onTap,
         onDoubleTap: widget.onDoubleTap,
