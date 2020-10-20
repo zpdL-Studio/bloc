@@ -16,7 +16,7 @@ abstract class BLoCScaffold extends BLoC with BLoCLoading, BLoCStreamSubscriptio
     hideBLoCLoading();
   }
 
-  StreamSubscription<T> scaffoldSubscription<T>({
+  StreamSubscription<T>? scaffoldSubscription<T>({
     required Stream<T> stream,
     required void Function(T data) onData,
     void Function(bool success)? onDone,
@@ -40,7 +40,7 @@ abstract class BLoCScaffoldProvider<T extends BLoCScaffold> extends BLoCProvider
 
   const BLoCScaffoldProvider({this.backgroundColor, this.bodyColor, this.resizeToAvoidBottomInset = false, Key? key}) : super(key: key);
 
-  PreferredSizeWidget appBar(BuildContext context, T bloc);
+  PreferredSizeWidget? appBar(BuildContext context, T bloc);
 
   Widget body(BuildContext context, T bloc);
 

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:rxdart/rxdart.dart';
 
 import 'bloc_child.dart';
 import 'bloc_config.dart';
@@ -80,7 +79,7 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider<T>> with Widg
 
     if(bloc is BLoCLifeCycle) {
       lifeCycle = bloc;
-      WidgetsBinding?.instance?.addObserver(this);
+      WidgetsBinding.instance?.addObserver(this);
     }
     if(bloc is BLoCLoading) {
       loading = bloc;
@@ -97,7 +96,7 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider<T>> with Widg
   @override
   void dispose() {
     if(lifeCycle != null) {
-      WidgetsBinding?.instance?.removeObserver(this);
+      WidgetsBinding.instance?.removeObserver(this);
       lifeCycle?._pause();
       lifeCycle = null;
      }
@@ -345,7 +344,8 @@ class _BLoCLoadingState extends State<BLoCLoadingWidget> {
 }
 
 mixin BLoCStreamSubscription on BLoC {
-  final _compositeSubscription = CompositeSubscription();
+  bool _isDisposed = false;
+  final List<StreamSubscription<dynamic>> _subscriptionsList = [];
 
   void onStreamSubscriptionError(Exception e) {
     var context = buildContext;
@@ -354,7 +354,7 @@ mixin BLoCStreamSubscription on BLoC {
     }
   }
 
-  StreamSubscription<T> streamSubscription<T>({
+  StreamSubscription<T>? streamSubscription<T>({
     required Stream<T> stream,
     required void Function(T data) onData,
     void Function(bool success)? onDone,
@@ -362,35 +362,75 @@ mixin BLoCStreamSubscription on BLoC {
     void Function()? onShowLoading,
     void Function()? onHideLoading,
   }) {
-    return _compositeSubscription.add(
-      DeferStream(() => stream,
-      ).doOnListen(() {
-        if(onShowLoading != null) onShowLoading();
-      }).listen(
-          onData,
-          onError: ([error, stackTrace]) {
-            if(onHideLoading != null) onHideLoading();
+    // return _compositeSubscription.add(
+    //   DeferStream(() => stream,
+    //   ).doOnListen(() {
+    //     if(onShowLoading != null) onShowLoading();
+    //   }).listen(
+    //       onData,
+    //       onError: ([error, stackTrace]) {
+    //         if(onHideLoading != null) onHideLoading();
+    //
+    //         if(!(error is Exception)) {
+    //           return;
+    //         }
+    //         var errorResult = onError != null ? onError(error) : false;
+    //         if(!errorResult) {
+    //           onStreamSubscriptionError(error);
+    //         }
+    //         if(onDone != null) {
+    //           onDone(false);
+    //         }
+    //       },
+    //       onDone: () {
+    //         if(onHideLoading != null) onHideLoading();
+    //
+    //         if(onDone != null) {
+    //           onDone(true);
+    //         }
+    //       },
+    //       cancelOnError: true
+    //   ),
+    // );
 
-            if(!(error is Exception)) {
-              return;
-            }
-            var errorResult = onError != null ? onError(error) : false;
-            if(!errorResult) {
-              onStreamSubscriptionError(error);
-            }
-            if(onDone != null) {
-              onDone(false);
-            }
-          },
-          onDone: () {
-            if(onHideLoading != null) onHideLoading();
+    if(_isDisposed) {
+      throw ('This BLoC was disposed, try to use new instance instead');
+    }
 
-            if(onDone != null) {
-              onDone(true);
-            }
-          },
-          cancelOnError: true
-      ),
-    );
+    if (onShowLoading != null) onShowLoading();
+    var subscription = stream.listen(onData, onError: ([error, stackTrace]) {
+      if (onHideLoading != null) onHideLoading();
+
+      if (!(error is Exception)) {
+        return;
+      }
+      var errorResult = onError != null ? onError(error) : false;
+      if (!errorResult) {
+        onStreamSubscriptionError(error);
+      }
+      if (onDone != null) {
+        onDone(false);
+      }
+    }, onDone: () {
+      if (onHideLoading != null) onHideLoading();
+
+      if (onDone != null) {
+        onDone(true);
+      }
+    }, cancelOnError: true);
+
+    _subscriptionsList.add(subscription);
+
+    return subscription;
+  }
+
+  void clearSubscription() {
+    _subscriptionsList.forEach((it) => it.cancel());
+    _subscriptionsList.clear();
+  }
+
+  void disposeSubscription() {
+    clearSubscription();
+    _isDisposed = true;
   }
 }
