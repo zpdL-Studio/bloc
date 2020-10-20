@@ -100,6 +100,9 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widgets
     parent = null;
 
     if(bloc != null) {
+      if(bloc is BLoCStreamSubscription) {
+        (bloc as BLoCStreamSubscription).clearSubscription();
+      }
       disposeBLoC(bloc);
       bloc._setOnSetState(null);
       bloc._setOnBuildContext(null);
@@ -158,6 +161,8 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widgets
 mixin BLoCLifeCycle on BLoC {
   bool _resumed = false;
 
+  bool get lifeCycleResumed => _resumed;
+
   void _updateLifeCycle(BuildContext context) {
     bool isCurrent = _getIsCurrent(context);
     if(isCurrent) {
@@ -201,6 +206,7 @@ mixin BLoCLifeCycle on BLoC {
   void onLifeCycleResume();
 
   void onLifeCyclePause();
+
 }
 
 enum BLoCLoadingStatus {
@@ -382,5 +388,13 @@ mixin BLoCStreamSubscription on BLoC {
           cancelOnError: true
       ),
     );
+  }
+
+  void disposeSubscription() {
+    _compositeSubscription.dispose();
+  }
+
+  void clearSubscription() {
+    _compositeSubscription.clear();
   }
 }
