@@ -116,11 +116,6 @@ mixin BLoCChildKeyboardState on BLoCChild {
       childKeyboardStateHasFocusNode(focusNode);
     }
   }
-
-  bool getChildKeyboardState() {
-    final childKeyboardState = this.childKeyboardState;
-    return childKeyboardState != null ? childKeyboardState() : false;
-  }
 }
 
 mixin BLoCChildLoading on BLoCChild {

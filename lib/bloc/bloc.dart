@@ -1,24 +1,24 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:rxdart/rxdart.dart';
 
 import 'bloc_child.dart';
 import 'bloc_config.dart';
 
 abstract class BLoC {
 
-  BuildContext Function()? _onBuildContext;
-  bool Function()? _onMounted;
+  BuildContext Function() _onBuildContext;
+  bool Function() _onMounted;
 
-  BuildContext? get buildContext {
-    var _onBuildContext = this._onBuildContext;
+  BuildContext get buildContext {
     if(_onBuildContext != null) {
       return _onBuildContext();
     }
     return null;
   }
 
-  void _setOnBuildContext(BuildContext Function()? onBuildContext) {
+  void _setOnBuildContext(BuildContext Function() onBuildContext) {
     _onBuildContext = onBuildContext;
   }
 
@@ -26,19 +26,14 @@ abstract class BLoC {
     _onMounted = onMounted;
   }
 
-  bool get mounted {
-    var _onMounted = this._onMounted;
-    return _onMounted != null ? _onMounted() : false;
-  }
-
-  void Function(VoidCallback)? _onSetState;
-  void _setOnSetState(void Function(VoidCallback)? onSetState) {
+  void Function(VoidCallback) _onSetState;
+  void _setOnSetState(void Function(VoidCallback) onSetState) {
     _onSetState = onSetState;
   }
 
   void setState(VoidCallback fn) {
-    var _onSetState = this._onSetState;
-    if(mounted && _onSetState != null) {
+    final _onMounted = this._onMounted;
+    if(_onMounted != null && _onMounted() && _onSetState != null) {
       _onSetState(fn);
     }
   }
@@ -48,10 +43,10 @@ abstract class BLoC {
 
 abstract class BLoCProvider<T extends BLoC> extends StatefulWidget {
 
-  const BLoCProvider({Key? key}) : super(key: key);
+  const BLoCProvider({Key key}) : super(key: key);
 
-  static T? of<T extends BLoC>(BuildContext context) {
-    final state = context.findAncestorStateOfType<BLoCProviderState<T>>();
+  static T of<T extends BLoC>(BuildContext context) {
+    final BLoCProviderState<T> state = context.findAncestorStateOfType<BLoCProviderState<T>>();
     return state?.bloc;
   }
 
@@ -63,65 +58,62 @@ abstract class BLoCProvider<T extends BLoC> extends StatefulWidget {
   Widget build(BuildContext context, T bloc);
 }
 
-class BLoCProviderState<T extends BLoC> extends State<BLoCProvider<T>> with WidgetsBindingObserver {
+class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with WidgetsBindingObserver {
 
-  @protected T? bloc;
-  @protected BLoCLifeCycle? lifeCycle;
-  @protected BLoCLoading? loading;
-  @protected BLoCParent? parent;
+  @protected T bloc;
+  @protected BLoCLifeCycle lifeCycle;
+  @protected BLoCLoading loading;
+  @protected BLoCParent parent;
 
   @override
   void initState() {
-    final bloc = widget.createBLoC(); // KKH Update
-    bloc._setOnMounted(() => mounted);
-    bloc._setOnBuildContext(() => context);
-    bloc._setOnSetState((fn) => setState(fn));
+    bloc = widget.createBLoC();
+    bloc?._setOnMounted(() => this.mounted);
+    bloc?._setOnBuildContext(() => this.context);
+    bloc?._setOnSetState((fn) => setState(fn));
 
     if(bloc is BLoCLifeCycle) {
-      lifeCycle = bloc;
-      WidgetsBinding.instance?.addObserver(this);
+      lifeCycle = bloc as BLoCLifeCycle;
+      WidgetsBinding.instance.addObserver(this);
     }
     if(bloc is BLoCLoading) {
-      loading = bloc;
+      loading = bloc as BLoCLoading;
     }
     if(bloc is BLoCParent) {
-      parent = bloc;
+      parent = bloc as BLoCParent;
     }
-    initBLoC(bloc);
-    this.bloc = bloc;
-
+    if(bloc != null) {
+      initBLoC(bloc);
+    }
     super.initState();
   }
 
   @override
   void dispose() {
     if(lifeCycle != null) {
-      WidgetsBinding.instance?.removeObserver(this);
-      lifeCycle?._pause();
+      WidgetsBinding.instance.removeObserver(this);
+      lifeCycle._pause();
       lifeCycle = null;
      }
     loading = null;
     parent?.disposeParent();
     parent = null;
 
-    final bloc = this.bloc;
     if(bloc != null) {
       disposeBLoC(bloc);
       bloc._setOnSetState(null);
       bloc._setOnBuildContext(null);
       bloc.dispose();
+      bloc = null;
     }
-    this.bloc = null;
 
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final bloc = this.bloc;
     if(bloc != null) {
       lifeCycle?._updateLifeCycle(context);
-      final loading = this.loading;
       if(loading != null) {
         return Stack(
           children: [
@@ -167,7 +159,7 @@ mixin BLoCLifeCycle on BLoC {
   bool _resumed = false;
 
   void _updateLifeCycle(BuildContext context) {
-    final isCurrent = _getIsCurrent(context);
+    bool isCurrent = _getIsCurrent(context);
     if(isCurrent) {
       _resume();
     } else {
@@ -176,7 +168,7 @@ mixin BLoCLifeCycle on BLoC {
   }
 
   void _didChangeAppLifecycleState(AppLifecycleState state) {
-    var context = buildContext;
+    BuildContext context = buildContext;
     if(context != null) {
       if(_getIsCurrent(context)) {
         if (state == AppLifecycleState.resumed) {
@@ -224,11 +216,10 @@ mixin BLoCLoading on BLoC {
   int _count = 0;
   BLoCLoadingStatus _status = BLoCLoadingStatus.INIT;
 
-  BLoCLoadingWidgetNotify? _notify;
+  BLoCLoadingWidgetNotify _notify;
 
   void _setStatus(BLoCLoadingStatus status) {
     _status = status;
-    var _notify = this._notify;
     if(_notify != null) {
       _notify(_status);
     }
@@ -302,22 +293,22 @@ mixin BLoCLoading on BLoC {
     });
   }
   
-  Widget buildBLoCLoading(BuildContext context, BLoCLoadingStatus? status) => BLoCConfig().loadingBuilder(context, status);
+  Widget buildBLoCLoading(BuildContext context, BLoCLoadingStatus status) => BLoCConfig().loadingBuilder(context, status);
 }
 
 class BLoCLoadingWidget extends StatefulWidget {
 
-  final Widget Function(BuildContext context, BLoCLoadingStatus? status) builder;
-  final BLoCLoadingStatus Function(BLoCLoadingWidgetNotify? notify) notify;
+  final Widget Function(BuildContext context, BLoCLoadingStatus status) builder;
+  final BLoCLoadingStatus Function(BLoCLoadingWidgetNotify notify) notify;
 
-  const BLoCLoadingWidget({Key? key, required this.builder, required this.notify}) : super(key: key);
+  const BLoCLoadingWidget({Key key, @required this.builder, @required this.notify}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() => _BLoCLoadingState();
 }
 
 class _BLoCLoadingState extends State<BLoCLoadingWidget> {
-  BLoCLoadingStatus? _status;
+  BLoCLoadingStatus _status;
 
   @override
   void initState() {
@@ -344,93 +335,52 @@ class _BLoCLoadingState extends State<BLoCLoadingWidget> {
 }
 
 mixin BLoCStreamSubscription on BLoC {
-  bool _isDisposed = false;
-  final List<StreamSubscription<dynamic>> _subscriptionsList = [];
+  final _compositeSubscription = CompositeSubscription();
 
   void onStreamSubscriptionError(Exception e) {
-    var context = buildContext;
+    BuildContext context = buildContext;
     if(context != null) {
       BLoCConfig().streamSubscriptionError(context, e);
     }
   }
 
-  StreamSubscription<T>? streamSubscription<T>({
-    required Stream<T> stream,
-    required void Function(T data) onData,
-    void Function(bool success)? onDone,
-    bool Function(Exception exception)? onError,
-    void Function()? onShowLoading,
-    void Function()? onHideLoading,
+  StreamSubscription<T> streamSubscription<T>({
+    @required Stream<T> stream,
+    @required void Function(T data) onData,
+    void Function(bool success) onDone,
+    bool Function(Exception exception) onError,
+    void Function() onShowLoading,
+    void Function() onHideLoading,
   }) {
-    // return _compositeSubscription.add(
-    //   DeferStream(() => stream,
-    //   ).doOnListen(() {
-    //     if(onShowLoading != null) onShowLoading();
-    //   }).listen(
-    //       onData,
-    //       onError: ([error, stackTrace]) {
-    //         if(onHideLoading != null) onHideLoading();
-    //
-    //         if(!(error is Exception)) {
-    //           return;
-    //         }
-    //         var errorResult = onError != null ? onError(error) : false;
-    //         if(!errorResult) {
-    //           onStreamSubscriptionError(error);
-    //         }
-    //         if(onDone != null) {
-    //           onDone(false);
-    //         }
-    //       },
-    //       onDone: () {
-    //         if(onHideLoading != null) onHideLoading();
-    //
-    //         if(onDone != null) {
-    //           onDone(true);
-    //         }
-    //       },
-    //       cancelOnError: true
-    //   ),
-    // );
+    return _compositeSubscription.add(
+      DeferStream(() => stream,
+      ).doOnListen(() {
+        if(onShowLoading != null) onShowLoading();
+      }).listen(
+          onData,
+          onError: ([error, stackTrace]) {
+            if(onHideLoading != null) onHideLoading();
 
-    if(_isDisposed) {
-      throw ('This BLoC was disposed, try to use new instance instead');
-    }
+            if(!(error is Exception)) {
+              return;
+            }
+            var errorResult = onError != null ? onError(error) : false;
+            if(!errorResult) {
+              onStreamSubscriptionError(error);
+            }
+            if(onDone != null) {
+              onDone(false);
+            }
+          },
+          onDone: () {
+            if(onHideLoading != null) onHideLoading();
 
-    if (onShowLoading != null) onShowLoading();
-    var subscription = stream.listen(onData, onError: ([error, stackTrace]) {
-      if (onHideLoading != null) onHideLoading();
-
-      if (!(error is Exception)) {
-        return;
-      }
-      var errorResult = onError != null ? onError(error) : false;
-      if (!errorResult) {
-        onStreamSubscriptionError(error);
-      }
-      if (onDone != null) {
-        onDone(false);
-      }
-    }, onDone: () {
-      if (onHideLoading != null) onHideLoading();
-
-      if (onDone != null) {
-        onDone(true);
-      }
-    }, cancelOnError: true);
-
-    _subscriptionsList.add(subscription);
-
-    return subscription;
-  }
-
-  void clearSubscription() {
-    _subscriptionsList.forEach((it) => it.cancel());
-    _subscriptionsList.clear();
-  }
-
-  void disposeSubscription() {
-    clearSubscription();
-    _isDisposed = true;
+            if(onDone != null) {
+              onDone(true);
+            }
+          },
+          cancelOnError: true
+      ),
+    );
   }
 }
