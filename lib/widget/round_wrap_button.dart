@@ -6,48 +6,48 @@ import 'wrap_content_widget.dart';
 class RoundWrapButton extends StatelessWidget {
 
   const RoundWrapButton({
-    Key? key,
-    required this.child,
-    double? minWidth,
-    double? maxWidth,
-    double? width,
-    double? minHeight,
-    double? maxHeight,
-    double? height,
+    Key key,
+    this.child,
+    double minWidth,
+    double maxWidth,
+    double width,
+    double minHeight,
+    double maxHeight,
+    double height,
     this.padding = const EdgeInsets.all(0),
-    double? radius,
-    Color? colorBgEnable,
-    Color? colorBgDisable,
-    Color? colorBg,
-    Color? colorBorderEnable,
-    Color? colorBorderDisable,
-    Color? colorBorder,
+    double radius,
+    Color colorBgEnable,
+    Color colorBgDisable,
+    Color colorBg,
+    Color colorBorderEnable,
+    Color colorBorderDisable,
+    Color colorBorder,
     this.onTap})
-      : radius = radius ?? ((minHeight ?? height ?? 0) / 2),
-        minWidth = (minWidth ?? width),
-        maxWidth = (maxWidth ?? width),
-        minHeight = (minHeight ?? height),
-        maxHeight = (maxHeight ?? height),
-        colorBgEnable = colorBgEnable ?? colorBg,
-        colorBgDisable = colorBgDisable ?? colorBg,
-        colorBorderEnable = colorBorderEnable ?? colorBorder,
-        colorBorderDisable = colorBorderDisable ?? colorBorder,
+      : this.radius = radius ?? ((minHeight ?? height) / 2),
+        this.minWidth = (minWidth ?? width),
+        this.maxWidth = (maxWidth ?? width),
+        this.minHeight = (minHeight ?? height),
+        this.maxHeight = (maxHeight ?? height),
+        this.colorBgEnable = colorBgEnable ?? colorBg,
+        this.colorBgDisable = colorBgDisable ?? colorBg,
+        this.colorBorderEnable = colorBorderEnable ?? colorBorder,
+        this.colorBorderDisable = colorBorderDisable ?? colorBorder,
         super(key: key);
 
   final Widget child;
-  final double? minWidth;
-  final double? maxWidth;
-  final double? minHeight;
-  final double? maxHeight;
-  final EdgeInsetsGeometry? padding;
+  final double minWidth;
+  final double maxWidth;
+  final double minHeight;
+  final double maxHeight;
+  final EdgeInsetsGeometry padding;
   final double radius;
 
-  final Color? colorBgEnable;
-  final Color? colorBgDisable;
-  final Color? colorBorderEnable;
-  final Color? colorBorderDisable;
+  final Color colorBgEnable;
+  final Color colorBgDisable;
+  final Color colorBorderEnable;
+  final Color colorBorderDisable;
 
-  final GestureTapCallback? onTap;
+  final GestureTapCallback onTap;
   
   @override
   Widget build(BuildContext context) {
@@ -59,17 +59,17 @@ class RoundWrapButton extends StatelessWidget {
             onTap: onTap,
             child: Container(
                 constraints: BoxConstraints(
-                  minWidth: minWidth ??  0,
-                  maxWidth: maxWidth ??  double.infinity,
-                  minHeight: minHeight ?? 0,
-                  maxHeight: maxHeight ?? double.infinity,
+                  minWidth: minWidth != null ? minWidth : 0,
+                  maxWidth: maxWidth != null ? maxWidth : double.infinity,
+                  minHeight: minHeight != null ? minHeight : 0,
+                  maxHeight: maxHeight != null ? maxHeight : double.infinity,
                 ),
                 padding: padding,
                 child: WrapContent(
-                    minWidth: minWidth ??  0,
-                    maxWidth: maxWidth ??  double.infinity,
-                    minHeight: minHeight ?? 0,
-                    maxHeight: maxHeight ?? double.infinity,
+                    minWidth: maxWidth,
+                    maxWidth: maxWidth,
+                    minHeight: minHeight,
+                    maxHeight: maxHeight,
                     child: child
                 )
             ),

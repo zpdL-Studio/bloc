@@ -1,5 +1,5 @@
 extension MapExt on Map {
-  T get<T>(dynamic key, {T Function(Map map)? converter}) {
+  T get<T>(dynamic key, {T Function(Map map) converter}) {
     switch(T) {
       case int:
         return (dynamicToInt(this[key]) as T);
@@ -18,13 +18,16 @@ extension MapExt on Map {
     }
   }
 
-  List<T> getList<T>(dynamic key, [T Function(Map map)? converter]){
-    final results = <T>[];
+  List<T> getList<T>(dynamic key, [T Function(Map map) converter]){
+    final results = List<T>();
+    if(map == null) {
+      return results;
+    }
 
     final list = this[key];
     if (list is List) {
       for (final obj in list) {
-        T? value;
+        T value;
         switch(T) {
           case int:
             value = dynamicToInt(obj) as T;
@@ -55,7 +58,7 @@ extension MapExt on Map {
   }
 }
 
-int? dynamicToInt(dynamic value) {
+int dynamicToInt(dynamic value) {
   if (value is int) {
     return value;
   } else if (value is double) {
@@ -67,7 +70,7 @@ int? dynamicToInt(dynamic value) {
   }
 }
 
-double? dynamicToDouble(dynamic value) {
+double dynamicToDouble(dynamic value) {
   if (value is double) {
     return value;
   } else if (value is int) {
@@ -79,7 +82,7 @@ double? dynamicToDouble(dynamic value) {
   }
 }
 
-String? dynamicToString(dynamic value) {
+String dynamicToString(dynamic value) {
   if (value is String) {
     return value;
   } else {

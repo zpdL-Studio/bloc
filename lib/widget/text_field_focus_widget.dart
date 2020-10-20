@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 class TextFieldFocusWidget extends StatefulWidget {
 
   final Widget Function(BuildContext context, FocusNode focusNode) onBuildTextField;
-  final void Function(FocusNode focusNode)? onHasFocusNode;
+  final void Function(FocusNode focusNode) onHasFocusNode;
 
-  const TextFieldFocusWidget({Key? key, required this.onBuildTextField, this.onHasFocusNode}) : super(key: key);
+  const TextFieldFocusWidget({Key key, @required this.onBuildTextField, this.onHasFocusNode}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() => _TextFieldFocusState();
@@ -13,12 +13,12 @@ class TextFieldFocusWidget extends StatefulWidget {
 
 class _TextFieldFocusState extends State<TextFieldFocusWidget> {
 
-  FocusNode? _focusNode;
+  FocusNode _focusNode;
 
   @override
   void initState() {
     _focusNode = FocusNode();
-    _focusNode?.addListener(focusNodeListener);
+    _focusNode.addListener(this.focusNodeListener);
     super.initState();
   }
 
@@ -27,32 +27,23 @@ class _TextFieldFocusState extends State<TextFieldFocusWidget> {
     if(_focusNode?.hasFocus == true) {
       _focusNode?.unfocus();
     }
-    _focusNode?.removeListener(focusNodeListener);
+    _focusNode?.removeListener(this.focusNodeListener);
     _focusNode?.dispose();
     _focusNode = null;
     super.dispose();
   }
 
   void focusNodeListener() {
-    var focusNode = _focusNode;
-    if (widget.onHasFocusNode != null && focusNode != null) {
-      if (focusNode.hasFocus) {
-        var onHasFocusNode = widget.onHasFocusNode;
-        if (onHasFocusNode != null) {
-          onHasFocusNode(focusNode);
-        }
+    if(widget.onHasFocusNode != null && _focusNode != null) {
+      if(_focusNode.hasFocus) {
+        widget.onHasFocusNode(_focusNode);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    var focusNode = _focusNode;
-    if(focusNode != null) {
-      return widget.onBuildTextField(context, focusNode);
-    } else {
-      return Container();
-    }
+    return widget.onBuildTextField(context, _focusNode);
   }
 }
 

@@ -21,11 +21,11 @@ abstract class BLoCChild extends BLoC {
 
 abstract class BLoCChildProvider<T extends BLoCChild> extends BLoCProvider<T> {
 
-  const BLoCChildProvider({Key? key}) : super(key: key);
+  const BLoCChildProvider({Key key}) : super(key: key);
 
   @override
   T createBLoC() {
-    var bloc = createChildBLoC();
+    T bloc = createChildBLoC();
     bloc._attached = true;
     return bloc;
   }
@@ -35,9 +35,9 @@ abstract class BLoCChildProvider<T extends BLoCChild> extends BLoCProvider<T> {
 
 mixin BLoCParent on BLoC {
   bool _keyboardState = false;
-  OnBLoCChildKeyboardStateHasFocusNode? childKeyboardStateHasFocusNode;
+  OnBLoCChildKeyboardStateHasFocusNode childKeyboardStateHasFocusNode;
 
-  final List<BLoCChild> _blocChildren = [];
+  List<BLoCChild> _blocChildren = List();
 
   void addChild(BLoCChild child) {
     _blocChildren.add(child);
@@ -73,10 +73,9 @@ mixin BLoCParent on BLoC {
         child.childKeyboardStateHasFocusNode = null;
       }
       if(child is BLoCChildLoading) {
-        var _hideBLoCChildLoading = child._hideBLoCChildLoading;
-        if(_hideBLoCChildLoading != null) {
-          for(var i = 0; i < child._loadingCount; i++) {
-            _hideBLoCChildLoading();
+        if(child._hideBLoCChildLoading != null) {
+          for(int i = 0; i < child._loadingCount; i++) {
+            child._hideBLoCChildLoading();
           }
         }
         child._showBLoCChildLoading = null;
@@ -96,7 +95,6 @@ mixin BLoCParent on BLoC {
   }
 
   void hasFocusNodeBLoCKeyboardStateParent(FocusNode focusNode) {
-    var childKeyboardStateHasFocusNode = this.childKeyboardStateHasFocusNode;
     if(childKeyboardStateHasFocusNode != null) {
       childKeyboardStateHasFocusNode(focusNode);
     }
@@ -108,15 +106,14 @@ typedef OnBLoCChildKeyboardStateHasFocusNode = void Function(FocusNode focusNode
 
 mixin BLoCChildKeyboardState on BLoCChild {
 
-  OnBLoCChildKeyboardState? childKeyboardState;
-  OnBLoCChildKeyboardStateHasFocusNode? childKeyboardStateHasFocusNode;
+  OnBLoCChildKeyboardState childKeyboardState;
+  OnBLoCChildKeyboardStateHasFocusNode childKeyboardStateHasFocusNode;
 
   void onBLoCChildKeyboardState(bool show);
 
   void hasFocusNodeBLoCKeyboardState(FocusNode focusNode) {
-    var hasFocusNode = childKeyboardStateHasFocusNode;
-    if(hasFocusNode != null) {
-      hasFocusNode(focusNode);
+    if(childKeyboardStateHasFocusNode != null) {
+      childKeyboardStateHasFocusNode(focusNode);
     }
   }
 
@@ -129,11 +126,10 @@ mixin BLoCChildKeyboardState on BLoCChild {
 mixin BLoCChildLoading on BLoCChild {
   int _loadingCount = 0;
 
-  void Function()? _showBLoCChildLoading;
-  void Function()? _hideBLoCChildLoading;
+  void Function() _showBLoCChildLoading;
+  void Function() _hideBLoCChildLoading;
 
   void showBLoCChildLoading() {
-    var _showBLoCChildLoading = this._showBLoCChildLoading;
     if(_showBLoCChildLoading != null) {
       _loadingCount++;
       _showBLoCChildLoading();
@@ -141,7 +137,6 @@ mixin BLoCChildLoading on BLoCChild {
   }
 
   void hideBLoCChildLoading() {
-    var _hideBLoCChildLoading = this._hideBLoCChildLoading;
     if(_hideBLoCChildLoading != null) {
       _loadingCount--;
       _hideBLoCChildLoading();

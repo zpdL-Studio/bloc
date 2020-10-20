@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'bloc.dart';
 
 class BLoCConfig {
@@ -12,8 +11,8 @@ class BLoCConfig {
   int loadingDelayMs = 300;
   int loadingHideDelayMs = 30;
 
-  Widget Function(BuildContext context, BLoCLoadingStatus? status) loadingBuilder =
-      (BuildContext context, BLoCLoadingStatus? status) {
+  Widget Function(BuildContext context, BLoCLoadingStatus status) loadingBuilder =
+      (BuildContext context, BLoCLoadingStatus status) {
     switch(status) {
       case BLoCLoadingStatus.INIT:
         return Container();
@@ -32,9 +31,8 @@ class BLoCConfig {
           alignment: AlignmentDirectional.center,
           child: Container(
               width: 40, height: 40, child: CircularProgressIndicator()));
-      case null:
-        return Container();
     }
+    return Container();
   };
 
   void Function(BuildContext context, Exception e) streamSubscriptionError =
