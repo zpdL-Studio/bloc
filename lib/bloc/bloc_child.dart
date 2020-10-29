@@ -16,7 +16,12 @@ abstract class BLoCChild extends BLoC {
     }
   }
 
-  void disposeChild();
+  @mustCallSuper
+  void disposeChild() {
+    if (this is BLoCParent) {
+      (this as BLoCParent).disposeParent();
+    }
+  }
 }
 
 abstract class BLoCChildProvider<T extends BLoCChild> extends BLoCProvider<T> {
@@ -46,9 +51,15 @@ mixin BLoCParent on BLoC {
       child.childKeyboardState = () => _keyboardState;
       child.childKeyboardStateHasFocusNode = hasFocusNodeBLoCKeyboardStateParent;
     }
+
     if(child is BLoCChildLoading && this is BLoCLoading) {
-      child._showBLoCChildLoading = (this as BLoCLoading).showBLoCLoading;
-      child._hideBLoCChildLoading = (this as BLoCLoading).hideBLoCLoading;
+      if(this is BLoCLoading) {
+        child._showBLoCChildLoading = (this as BLoCLoading).showBLoCLoading;
+        child._hideBLoCChildLoading = (this as BLoCLoading).hideBLoCLoading;
+      } else if(this is BLoCChildLoading) {
+        child._showBLoCChildLoading = (this as BLoCChildLoading)._showBLoCChildLoading;
+        child._hideBLoCChildLoading = (this as BLoCChildLoading)._hideBLoCChildLoading;
+      }
     }
   }
 

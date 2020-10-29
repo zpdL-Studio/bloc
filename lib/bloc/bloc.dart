@@ -63,7 +63,6 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widgets
   @protected T bloc;
   @protected BLoCLifeCycle lifeCycle;
   @protected BLoCLoading loading;
-  @protected BLoCParent parent;
 
   @override
   void initState() {
@@ -79,9 +78,6 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widgets
     if(bloc is BLoCLoading) {
       loading = bloc as BLoCLoading;
     }
-    if(bloc is BLoCParent) {
-      parent = bloc as BLoCParent;
-    }
     if(bloc != null) {
       initBLoC(bloc);
     }
@@ -96,8 +92,6 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widgets
       lifeCycle = null;
      }
     loading = null;
-    parent?.disposeParent();
-    parent = null;
 
     if(bloc != null) {
       if(bloc is BLoCStreamSubscription) {

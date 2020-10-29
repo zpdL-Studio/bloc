@@ -31,6 +31,14 @@ abstract class BLoCScaffold extends BLoC with BLoCLoading, BLoCStreamSubscriptio
       onHideLoading: onStreamSubscriptionHideLoading
     );
   }
+
+  @override
+  @mustCallSuper
+  void dispose() {
+    if (this is BLoCParent) {
+      (this as BLoCParent).disposeParent();
+    }
+  }
 }
 
 abstract class BLoCScaffoldProvider<T extends BLoCScaffold> extends BLoCProvider<T> {
