@@ -11,6 +11,7 @@ abstract class BLoCChild extends BLoC {
   @override
   void dispose() {
     _attached = false;
+    onDetach();
     if(!_parentDispose) {
       disposeChild();
     }
@@ -22,6 +23,10 @@ abstract class BLoCChild extends BLoC {
       (this as BLoCParent).disposeParent();
     }
   }
+
+  void onAttach() {}
+
+  void onDetach() {}
 }
 
 abstract class BLoCChildProvider<T extends BLoCChild> extends BLoCProvider<T> {
@@ -32,6 +37,7 @@ abstract class BLoCChildProvider<T extends BLoCChild> extends BLoCProvider<T> {
   T createBLoC() {
     T bloc = createChildBLoC();
     bloc._attached = true;
+    bloc.onAttach();
     return bloc;
   }
 

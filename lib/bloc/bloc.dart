@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 
-import 'bloc_child.dart';
 import 'bloc_config.dart';
 
 abstract class BLoC {
@@ -58,10 +57,9 @@ abstract class BLoCProvider<T extends BLoC> extends StatefulWidget {
   Widget build(BuildContext context, T bloc);
 }
 
-class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with WidgetsBindingObserver {
+class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> {
 
   @protected T bloc;
-  @protected BLoCLifeCycle lifeCycle;
   @protected BLoCLoading loading;
 
   @override
@@ -71,10 +69,6 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widgets
     bloc?._setOnBuildContext(() => this.context);
     bloc?._setOnSetState((fn) => setState(fn));
 
-    if(bloc is BLoCLifeCycle) {
-      lifeCycle = bloc as BLoCLifeCycle;
-      WidgetsBinding.instance.addObserver(this);
-    }
     if(bloc is BLoCLoading) {
       loading = bloc as BLoCLoading;
     }
@@ -86,11 +80,6 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widgets
 
   @override
   void dispose() {
-    if(lifeCycle != null) {
-      WidgetsBinding.instance.removeObserver(this);
-      lifeCycle._pause();
-      lifeCycle = null;
-     }
     loading = null;
 
     if(bloc != null) {
@@ -110,7 +99,6 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widgets
   @override
   Widget build(BuildContext context) {
     if(bloc != null) {
-      lifeCycle?._updateLifeCycle(context);
       if(loading != null) {
         return Stack(
           children: [
@@ -139,68 +127,11 @@ class BLoCProviderState<T extends BLoC> extends State<BLoCProvider> with Widgets
     return Container();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    lifeCycle?._didChangeAppLifecycleState(state);
-  }
-
   void initBLoC(T bloc) {}
 
   void disposeBLoC(T bloc) {}
 
   Widget buildBLoC(BuildContext context, T bloc, Widget widget) => widget;
-}
-
-mixin BLoCLifeCycle on BLoC {
-  bool _resumed = false;
-
-  bool get lifeCycleResumed => _resumed;
-
-  void _updateLifeCycle(BuildContext context) {
-    bool isCurrent = _getIsCurrent(context);
-    if(isCurrent) {
-      _resume();
-    } else {
-      _pause();
-    }
-  }
-
-  void _didChangeAppLifecycleState(AppLifecycleState state) {
-    BuildContext context = buildContext;
-    if(context != null) {
-      if(_getIsCurrent(context)) {
-        if (state == AppLifecycleState.resumed) {
-          _resume();
-        } else if (state == AppLifecycleState.paused) {
-          _pause();
-        }
-      }
-    }
-  }
-
-  bool _getIsCurrent(BuildContext context) {
-    return ModalRoute.of(context)?.isCurrent ?? false;
-  }
-
-  void _resume() async {
-    if(!_resumed) {
-      _resumed = true;
-      onLifeCycleResume();
-    }
-  }
-
-  void _pause() async {
-    if(_resumed) {
-      _resumed = false;
-      onLifeCyclePause();
-    }
-  }
-
-  void onLifeCycleResume();
-
-  void onLifeCyclePause();
-
 }
 
 enum BLoCLoadingStatus {

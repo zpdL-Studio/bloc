@@ -73,8 +73,45 @@ abstract class BLoCScaffoldProvider<T extends BLoCScaffold> extends BLoCProvider
   State<StatefulWidget> createState() => BLoCScaffoldProviderState<T>();
 }
 
-class BLoCScaffoldProviderState<T extends BLoCScaffold> extends BLoCProviderState<T> {
+class _BLoCScaffoldLifeCycleObserver {
+  static final _BLoCScaffoldLifeCycleObserver _instance = _BLoCScaffoldLifeCycleObserver._();
+
+  _BLoCScaffoldLifeCycleObserver._();
+
+  factory _BLoCScaffoldLifeCycleObserver() => _instance;
+
+  List<BLoCScaffold> list = [];
+
+  void subscribe(BLoCScaffold bloc) {
+    for(final _bloc in list) {
+      if(_bloc is BLoCLifeCycle) {
+        _bloc._pause();
+      }
+    }
+
+    if(bloc is BLoCLifeCycle) {
+      bloc._resume();
+    }
+    list.add(bloc);
+  }
+
+  void unsubscribe(BLoCScaffold bloc) {
+    if(bloc is BLoCLifeCycle) {
+      bloc._pause();
+    }
+    list.remove(bloc);
+    if(list.isNotEmpty) {
+      final _bloc = list.last;
+      if(_bloc is BLoCLifeCycle) {
+        _bloc._resume();
+      }
+    }
+  }
+}
+
+class BLoCScaffoldProviderState<T extends BLoCScaffold> extends BLoCProviderState<T> with WidgetsBindingObserver {
   @protected BLoCKeyboardState keyboardState;
+  @protected BLoCLifeCycle lifeCycle;
 
   @override
   void initBLoC(T bloc) {
@@ -84,6 +121,10 @@ class BLoCScaffoldProviderState<T extends BLoCScaffold> extends BLoCProviderStat
         keyboardState.addBLoCKeyboardStateListener((bloc as BLoCParent).updateChildKeyboardState);
         (keyboardState as BLoCParent).childKeyboardStateHasFocusNode = keyboardState.hasFocusNodeBLoCKeyboardState;
       }
+    }
+    if(bloc is BLoCLifeCycle) {
+      lifeCycle = bloc;
+      WidgetsBinding.instance.addObserver(this);
     }
     super.initBLoC(bloc);
   }
@@ -97,6 +138,11 @@ class BLoCScaffoldProviderState<T extends BLoCScaffold> extends BLoCProviderStat
       }
     }
     keyboardState = null;
+    if(lifeCycle != null) {
+      lifeCycle = null;
+      WidgetsBinding.instance.removeObserver(this);
+    }
+    _BLoCScaffoldLifeCycleObserver().unsubscribe(bloc);
     super.disposeBLoC(bloc);
   }
 
@@ -104,6 +150,21 @@ class BLoCScaffoldProviderState<T extends BLoCScaffold> extends BLoCProviderStat
   Widget buildBLoC(BuildContext context, T bloc, Widget widget) {
     keyboardState?._updateKeyboardState(context);
     return super.buildBLoC(context, bloc, widget);
+  }
+
+  @override
+  void didChangeDependencies() {
+    final bloc = this.bloc;
+    if(bloc != null) {
+      _BLoCScaffoldLifeCycleObserver().subscribe(bloc);
+    }
+    super.didChangeDependencies();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    lifeCycle?._didChangeAppLifecycleState(state);
+    super.didChangeAppLifecycleState(state);
   }
 }
 
@@ -154,4 +215,46 @@ mixin BLoCKeyboardState on BLoCScaffold {
   void hasFocusNodeBLoCKeyboardState(FocusNode focusNode) {
     _focusNode = focusNode;
   }
+}
+
+mixin BLoCLifeCycle on BLoCScaffold {
+  bool _resumed = false;
+
+  bool get lifeCycleResumed => _resumed;
+
+  void _didChangeAppLifecycleState(AppLifecycleState state) {
+    BuildContext context = buildContext;
+    if(context != null) {
+      if(_getIsCurrent(context)) {
+        if (state == AppLifecycleState.resumed) {
+          _resume();
+        } else if (state == AppLifecycleState.paused) {
+          _pause();
+        }
+      }
+    }
+  }
+
+  bool _getIsCurrent(BuildContext context) {
+    return ModalRoute.of(context)?.isCurrent ?? false;
+  }
+
+  void _resume() async {
+    if(!_resumed) {
+      _resumed = true;
+      onLifeCycleResume();
+    }
+  }
+
+  void _pause() async {
+    if(_resumed) {
+      _resumed = false;
+      onLifeCyclePause();
+    }
+  }
+
+  void onLifeCycleResume();
+
+  void onLifeCyclePause();
+
 }
