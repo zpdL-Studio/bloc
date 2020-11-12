@@ -38,6 +38,7 @@ abstract class BLoCScaffold extends BLoC with BLoCLoading, BLoCStreamSubscriptio
     if (this is BLoCParent) {
       (this as BLoCParent).disposeParent();
     }
+    disposeSubscription();
   }
 }
 
