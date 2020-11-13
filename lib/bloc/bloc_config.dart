@@ -11,6 +11,8 @@ class BLoCConfig {
   int loadingDelayMs = 300;
   int loadingHideDelayMs = 30;
 
+  String unknownExceptionMessage = "Unknown";
+
   Widget Function(BuildContext context, BLoCLoadingStatus status) loadingBuilder =
       (BuildContext context, BLoCLoadingStatus status) {
     switch(status) {
